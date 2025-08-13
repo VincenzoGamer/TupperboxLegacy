@@ -2,7 +2,17 @@ const { Pool } = require("pg");
 const fs = require("fs");
 const cache = require("./redis");
 
-let pool = new Pool();
+let pool = new Pool({
+  user: process.env.PGUSER,
+  host: process.env.PGHOST,      // full hostname
+  database: process.env.PGDATABASE,
+  password: process.env.PGPASSWORD,
+  port: process.env.PGPORT,
+  ssl: {
+    rejectUnauthorized: false    // sometimes required for hosted Postgres
+  }
+});
+
 
 const question = q => {
 	let rl = require("readline").createInterface({input:process.stdin,output:process.stdout});
