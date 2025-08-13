@@ -1,39 +1,54 @@
-const redis = new (require("ioredis"))(process.env.REDISURL);
+// Load .env first
+require('dotenv').config();
+
+const Redis = require("ioredis");
+
+// Connect using REDISURL from environment
+const redis = new Redis(process.env.REDISURL);
+
+redis.on("connect", () => console.log("Redis connected!"));
+redis.on("error", (err) => console.error("Redis connection error:", err));
 
 module.exports = {
-	redis,
+  redis,
 
-	cooldowns: {
-		get: async (key) =>
-			await redis.get(`cooldowns/${key}`),
+  cooldowns: {
+    get: async (key) =>
+      await redis.get(`cooldowns/${key}`),
 
-		set: async (key, time) =>
-			await redis.set(`cooldowns/${key}`, Date.now() + time, "px", time),
-        
-		update: async (key, time) =>
-			await redis.pexpire(`cooldowns/${key}`, time),
-	},
+    set: async (key, time) =>
+      await redis.set(`cooldowns/${key}`, Date.now() + time, "PX", time),
 
-	config: {
-		// TODO: rewrite this with a hashmap
-		get: async (guildID) =>
-			JSON.parse(await redis.get(`config/${guildID}`)),
+    update: async (key, time) =>
+      await redis.pexpire(`cooldowns/${key}`, time),
+  },
 
-		set: async (guildID, config) =>
-			await redis.set(`config/${guildID}`, JSON.stringify(Object.fromEntries(Object.entries(config).filter(ent => ent[1] !== null)))),
+  config: {
+    get: async (guildID) => {
+      const raw = await redis.get(`config/${guildID}`);
+      return raw ? JSON.parse(raw) : null;
+    },
 
-		delete: async (guildID) =>
-			await redis.del(`config/${guildID}`),
-	},
+    set: async (guildID, config) =>
+      await redis.set(
+        `config/${guildID}`,
+        JSON.stringify(
+          Object.fromEntries(Object.entries(config).filter(([k, v]) => v !== null))
+        )
+      ),
 
-	blacklist: {
-		get: async (channelID) =>
-			await redis.hget("blacklist", channelID),
+    delete: async (guildID) =>
+      await redis.del(`config/${guildID}`),
+  },
 
-		set: async (channelID, value) =>
-			await redis.hset("blacklist", channelID, value),
+  blacklist: {
+    get: async (channelID) =>
+      await redis.hget("blacklist", channelID),
 
-		delete: async (channelID) =>
-			await redis.hdel("blacklist", channelID),
-	},
+    set: async (channelID, value) =>
+      await redis.hset("blacklist", channelID, value),
+
+    delete: async (channelID) =>
+      await redis.hdel("blacklist", channelID),
+  },
 };
